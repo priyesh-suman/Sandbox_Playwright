@@ -5,7 +5,4 @@ services:
       dockerfile: CI/Dockerfile
     container_name: playwright-tests
     working_dir: /app
-    volumes:
-      - ../tests:/app/tests
-      - ../config:/app/config
-      - ../reports:/app/reports
+    tty: true
