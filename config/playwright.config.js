@@ -6,7 +6,10 @@ module.exports = defineConfig({
   retries: 1,
   reporter: [
     ['list'],
-    ['allure-playwright']
+    ['allure-playwright',{
+    outputFolder: 'reports/allure-results',
+    overwrite: true
+  }]
   ],
   use: {
     trace: 'off',
