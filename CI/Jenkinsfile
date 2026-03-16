@@ -1,18 +1,14 @@
 pipeline {
     agent any
 
-    options {
-        timestamps()
-    }
-
     stages {
         stage('Prepare Workspace') {
             steps {
                 script {
-                    bat '''
-                    if not exist reports\\allure-results mkdir reports\\allure-results
-                    if not exist reports\\allure-history mkdir reports\\allure-history
-                    '''
+                    bat """
+                        if not exist reports\\allure-results mkdir reports\\allure-results
+                        if not exist reports\\allure-history mkdir reports\\allure-history
+                    """
                 }
             }
         }
@@ -20,10 +16,9 @@ pipeline {
         stage('Restore Allure History') {
             steps {
                 script {
-                    // copy previous history into current allure-results/history
-                    bat '''
-                    xcopy /E /I /Y reports\\allure-history\\* reports\\allure-results\\history\\  >nul 2>&1
-                    '''
+                    bat """
+                        xcopy /E /I /Y reports\\allure-history\\* reports\\allure-results\\history\\  1>nul 2>&1
+                    """
                 }
             }
         }
@@ -31,11 +26,10 @@ pipeline {
         stage('Start Docker Services') {
             steps {
                 script {
-                    // stop any previous stack, then start fresh
-                    bat '''
-                    docker compose -f ci/docker-compose.yml down  || echo No containers to stop
-                    docker compose -f ci/docker-compose.yml up -d --build
-                    '''
+                    bat """
+                        docker compose -f ci/docker-compose.yml down || echo No containers to stop
+                        docker compose -f ci/docker-compose.yml up -d --build
+                    """
                 }
             }
         }
@@ -43,12 +37,11 @@ pipeline {
         stage('Run Tests Inside Docker') {
             steps {
                 script {
-                    // test failures => UNSTABLE, pipeline continues
                     catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        bat '''
-                        docker compose -f ci/docker-compose.yml exec playwright npx playwright test
-                        ping -n 6 127.0.0.1 >nul
-                        '''
+                        bat """
+                            docker compose -f ci/docker-compose.yml exec playwright npx playwright test
+                            ping -n 6 127.0.0.1 >nul
+                        """
                     }
                 }
             }
@@ -57,35 +50,37 @@ pipeline {
         stage('Copy Allure Results From Container') {
             steps {
                 script {
-                    // Windows-friendly way to get container id and docker cp
-                    bat '''
-                    for /f "delims=" %%i in ('docker compose -f ci\\docker-compose.yml ps -q playwright') do set CID=%%i
-                    echo Container ID is: %CID%
-                    if not "%CID%"=="" (
-                        docker cp %CID%:/app/reports/allure-results reports\\allure-results
-                    ) else (
-                        echo No playwright container found, skipping docker cp
-                    )
-                    '''
+                    bat """
+                        for /F "delims=" %%i in ('docker compose -f ci\\docker-compose.yml ps -q playwright') do set CID=%%i
+                        echo Container ID is: %CID%
+                        if not "%CID%" == "" (
+                            docker cp %CID%:/app/reports/allure-results reports\\allure-results
+                        ) else (
+                            echo No playwright container found, skipping docker cp
+                        )
+                    """
                 }
             }
         }
 
         stage('Generate Allure Report') {
             steps {
-                // using Allure Jenkins plugin configuration you already have
-                allure includeProperties: false,
-                       jdk: '',
-                       results: [[path: 'reports/allure-results']]
+                allure([
+                    includeProperties: false,
+                    jdk: '',
+                    properties: [],
+                    reportBuildPolicy: 'ALWAYS',
+                    results: [[path: 'reports/allure-results']]
+                ])
             }
         }
 
         stage('Save Allure History') {
             steps {
                 script {
-                    bat '''
-                    xcopy /E /I /Y allure-report\\history\\* reports\\allure-history\\
-                    '''
+                    bat """
+                        xcopy /E /I /Y allure-report\\history\\* reports\\allure-history\\
+                    """
                 }
             }
         }
@@ -94,16 +89,11 @@ pipeline {
     post {
         always {
             script {
-                // always tear down compose stack
-                bat '''
-                docker compose -f ci/docker-compose.yml down
-                '''
+                bat """
+                    docker compose -f ci/docker-compose.yml down
+                """
             }
-
-            // archive reports even if UNSTABLE/FAILED
-            archiveArtifacts artifacts: 'reports/**/*, allure-report/**/*',
-                             fingerprint: true,
-                             allowEmptyArchive: true
+            archiveArtifacts artifacts: 'reports/**', fingerprint: true
         }
     }
 }
