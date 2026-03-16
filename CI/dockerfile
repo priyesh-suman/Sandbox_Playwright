@@ -4,9 +4,8 @@ WORKDIR /app
 
 COPY package*.json ./
 RUN npm install
+RUN npm install -D allure-playwright
 
 COPY . .
 
 RUN mkdir -p /app/reports/allure-results
-
-CMD ["npx", "playwright", "test"]
