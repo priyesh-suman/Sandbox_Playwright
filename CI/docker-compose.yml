@@ -6,5 +6,6 @@ services:
     container_name: playwright-tests
     working_dir: /app
     volumes:
-      - ../:/app
-    tty: true
+      - ../tests:/app/tests
+      - ../config:/app/config
+      - ../reports:/app/reports
