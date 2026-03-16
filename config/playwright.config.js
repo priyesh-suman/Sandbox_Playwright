@@ -9,10 +9,11 @@ module.exports = defineConfig({
     ['allure-playwright']
   ],
   use: {
-    trace: 'on-first-retry',
+    trace: 'off',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure'
+    video: 'off'
   },
+  workers: 1,
   outputDir: '../reports/allure-results'
 });
 
