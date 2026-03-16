@@ -1,0 +1,165 @@
+
+
+Step 1 :Folder Structure 
+===================
+test-data
+utils
+config
+pages
+fixture 
+tests (by default)
+===================
+2 Package.json congtains scripts node wherer 
+ you can define npm run command np run [optionname defined in scrips]
+===================
+3 Report 
+  by defaukt its html 
+  if want multiple then you neeed to configure  playwright.config.ts
+
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  reporter: [
+    ['list'],
+    ['json', {  outputFile: 'test-results.json' }]
+  ],
+});
+
+===================
+4. How ot run setup and teardown
+  a - there are 2 ways  globalconfig and project dependencies 
+  add global files 
+
+    globalSetup: require.resolve('./global/testglobal.setup.js'),
+    globalTeardown: require.resolve('./global/testglobal.teardown.js'),
+    write async function in these files and export them as globalSetup and globalTeardown
+
+  b Project dependencies is the preferred one. 
+  Add the below config and add dependency in other project
+  {
+      name: 'setup',
+      testDir: "./global/", (********important*******)
+      testMatch: 'global.setup.js',
+      teardown:'teardown',
+
+    },
+    
+    {
+      name: 'teardown',
+      testDir: "./global/", (********important*******)
+      testMatch: 'global.teardown.js',
+
+    },
+    (********important*******)
+import { te5st as setup } from '@playwright/test'; in setup.js 
+import { test as teardown } from '@playwright/test'; in teardowndown.js
+=================================================================
+5 - Testmatch is used to run a paeticular file or spec file
+
+6 Grep isused for running test with tag
+for multitag it will not run as npm command myou have to provide npx playwright command
+"test-chrome-multitag": "npx playwright test --project=chromium --grep '@datadriven|@regression'"
+  
+7. For JSON validation install AJV npm install ajv
+ responseBody = await response.json();
+
+  // JSON Schema
+  const schema = {
+    type: "object",
+    properties: {
+      symbol: { type: "string" },
+      price: { type: "number" }
+    },
+    required: ["symbol", "price"]
+  };
+  
+  const ajv = new Ajv();
+  const validate = ajv.compile(schema);
+  const valid = validate(responseBody);
+  expect(valid).toBe(true);
+
+  ===================Docker =======================
+  1 (Precondition)- Docker Desktop should be up and running
+  
+  2. Create a file called 'dockerfile' and provide the commands
+  
+    FROM  mcr.microsoft.com/playwright:v1.58.2-noble (Imagename - chaneg the version as per your playwright)
+    RUN mkdir /app (create a directory)
+    WORKDIR /app (make that as workinfg dir)
+    COPY . /app (copy everything where docker file is located into this new directory )
+    RUN  npm install --force (ignores conflict and constraits)
+    RUN npx playwright install (install playwright)
+  
+  3. Now from the terminal run  commands 
+
+    Steps one by one to be execute on terminal (it automaticaly recognizes dockerfile)
+
+    -docker build -t docker-testrun1 . ( -t [name of the instance]  . for current working directory)
+    -docker images willl show all tghe images
+    -docker run -it [name of the omage] it will give you the terminakl in docker
+    - run the command npm run 'what ever you created'
+    - Ctrl D to exit out of docker and come to your terminal machine 
+    Note
+    ---------
+    repeat the above steps in 3 everytime you make any chages in the project
+  
+  ****Note : The above execution will not generate report in local ....
+   it has to be copied that into local machine . That is why we need docker-compose
+  ===================Docker Compose ====================================
+  The above will not copy the results
+A better way to do is through docker-compose file
+File name should be 'docker-compose.yaml'
+---------------------------------------
+
+services:
+  playwright-testrun:
+    image: playwright 
+    build:
+      context: . (current directory)
+      dockerfile: ./dockerfile
+    command: npm run test-chrome (commad to run)
+    volumes:
+      - ./playwright-report/:/app/playwright-report (report to be copied to host machine )
+      - ./test-results/:/app/test-results (report to be copied to host machine )
+      - ./allure-results/:/app/allure-results (allure report to be copied to host machine )
+
+- docker-compose up --build (because we want to build a new image) (this will do everything)
+- npx playwright show-report will give the hrml link on local machine (not on docker)
+=====================Allure Report==================
+
+Step 1 npm install -D allure-playwright (- D will ensure package will be saved in devDependencies)
+Step 2 Add in config file
+["allure-playwright", {
+      resultsDir: "allure-results" // Optional: specify output directory
+    }]
+Step 3 : Run your test using npx playwright test 
+
+Step 4 Generate report and ropen the report (--clean oprion is no more)
+- (not required for playwright ) npx allure generate allure-results --clean -o allure-report
+- npx allure open allure-report (it will automatically take data form allure -results folder default folder)
+- npx allure serve allure-results (will automatically open the reports)
+option 2
+- npx allure generate "./allure-results" --clean -o allure-report
+- npx allure open allure-report
+- npx playwright show-latest will show html report or (playwright-report/index.html)
+Step 5 (optional ) npm install -D allure-commandline
+
+******For Report to be visible through Jenkin install allure jenkin plugin
+=======================Jenkin Integration==================================
+If sourece control is integrated then jenki nfile is needed . otherwise directly copy past the jenkinfile content in the jenken textbox
+make sure docker desktpo is running . run the below command
+======================================================
+- docker run -p 8080:8080 -p 50000:50000 -v jenkins_home:/var/jenkins_home jenkins/jenkins:lts
+
+Local jenkin server password
+----------------------------
+C:\ProgramData\Jenkins\.jenkins\secrets\initialAdminPassword
+it creasts a password: a2543d4ac38c47bf88757822c7d5e9ad
+Username is : admin
+========================
+
+// docker compose pluggin to be installed in jenkin container
+docker exec -it jenkins bash
+apt update
+apt install -y docker-compose-plugin
+
