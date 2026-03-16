@@ -38,12 +38,15 @@ pipeline {
         }
 
         stage('Run Tests Inside Docker') {
-            steps {
-                script {
-                    bat 'docker compose -f ci/docker-compose.yml exec playwright npx playwright test'
-                }
+    steps {
+        script {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                bat 'docker compose -f ci/docker-compose.yml exec playwright npx playwright test'
             }
         }
+    }
+}
+
 
         stage('Copy Allure Results From Container') {
             steps {
