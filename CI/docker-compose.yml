@@ -6,3 +6,5 @@ services:
     container_name: playwright-tests
     working_dir: /app
     tty: true
+    stdin_open: true
+    command: tail -f /dev/null
