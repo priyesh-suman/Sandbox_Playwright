@@ -38,10 +38,12 @@ pipeline {
             steps {
                 script {
                     catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        bat """
-                            docker compose -f ci/docker-compose.yml exec playwright npx playwright test
-                            ping -n 6 127.0.0.1 >nul
+                            bat """
+                        docker compose -f ci/docker-compose.yml exec playwright cmd /c ^
+                        "set ALLURE_RESULTS_DIR=/app/reports/allure-results && npx playwright test --reporter=list,allure-playwright"
+                        ping -n 6 127.0.0.1 >nul
                         """
+
                     }
                 }
             }
